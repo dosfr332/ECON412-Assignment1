@@ -1,0 +1,249 @@
+---
+title: "ECON412 Assingment 1"
+author: "Freddie Dossor"
+date: "2025-03-23"
+output: html_document
+---
+
+```{r}
+rm(list = ls())
+set.seed(123)         
+library(ggplot2)
+library(forecast)     
+library(dplyr)  
+```
+
+## Question 1a
+
+```{r}
+# Create time variable (0-100)
+t_end <- 100
+df <- data.frame(t = 0:t_end)
+
+# Generate et: 0 for t=0, N(0,1) for t>0
+df$et <- c(0, rnorm(100))  
+
+# Summary statistics
+cat("Summary of et:\n")
+summary(df$et[-1])
+```
+
+## Question 1b
+
+### i
+
+$$x_{1,t} = \epsilon_t$$
+
+```{r}
+df$x1 <-  df$et  
+summary(df$x1)
+```
+
+### ii
+
+$$x_{2,t} = \epsilon_t + 0.8 \epsilon_{t-1} $$
+
+```{r}
+df$x2[1] <- 0
+
+for (t in 2:(t_end + 1)) {
+  df$x2[t] <- df$et[t] + 0.8 * df$et[t - 1]
+}
+summary(df$x2)
+```
+
+### iii
+
+$$x_{3,t} = 0.5 x_{3,t-1} + \epsilon_t + 0.8 \epsilon_{t-1} $$
+
+```{r}
+df$x3[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x3[t] <- 0.5 * df$x3[t-1] + df$et[t]
+}
+summary(df$x3)
+```
+
+### iv
+
+$$x_{4,t} = 0.5 x_{4,t-1} + \epsilon_t + 0.8 \epsilon_{t-1}$$
+
+```{r}
+df$x4[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x4[t] <- 0.5 * df$x4[t-1] + df$et[t] + 0.8 * df$et[t-1]
+}
+summary(df$x4)
+```
+
+### v
+
+$$x_{5,t} = 0.7x_{5,t-1} + \epsilon_t - 0.7\epsilon_{t-1}$$
+
+```{r}
+df$x5[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x5[t] <- 0.7 * df$x5[t-1] + df$et[t] - 0.7 * df$et[t-1]
+}
+summary(df$x5)
+```
+
+### vi
+
+$$x_{6,t} = 0.9x_{6,t-1} + \epsilon_t$$
+
+```{r}
+df$x6[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x6[t] <- 0.9 * df$x6[t-1] + df$et[t]
+}
+summary(df$x6)
+```
+
+### vii
+
+$$x_{7,t} = x_{7,t-1} + \epsilon_t$$
+
+```{r}
+df$x7[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x7[t] <- df$x7[t-1] + df$et[t]
+}
+summary(df$x7)
+```
+
+### vii
+
+$$x_{8,t} = 1.1x_{8,t-1} + \epsilon_t$$
+
+```{r}
+df$x8[1] <- 0
+for(t in 2:(t_end + 1)){
+  df$x8[t] <- 1.1* df$x8[t-1] + df$et[t]
+}
+summary(df$x8)
+```
+
+## Question 1c/d
+
+### i
+
+```{r}
+ggplot(data=df, aes(t, x1)) +
+  geom_path() +
+  labs(title="Sample realisation of x(1,t)")
+
+x1_acf_values <- acf(df$x1[-1], lag.max = 20, plot = FALSE)
+plot(x1_acf_values, main = "ACF of x(1,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x1_pacf_values <- pacf(df$x1[-1], lag.max = 20, plot = FALSE)
+plot(x1_pacf_values, main = "PACF of x(1,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+Looking at the sample plot there does not seem be be any significant trend/mean (constant of 0). Performing an "at a glance" window test the variance seems to stay constant throughout the sample and there is no evidence that observations are dependent of each other (constant covariance of 0). All this suggests at least weak-stationarity. Furthermore the DGP does not generate any significant spikes in the ACF or PACF. This suggests a stationary process with no autoregressive or moving average components which is consistent with the formula for $x_{1,t}$ being just the white noise term.
+
+### ii
+
+```{r}
+ggplot(data=df, aes(t, x2)) +
+  geom_path() +
+  labs(title="Sample realisation of x(2,t)")
+
+x2_acf_values <- acf(df$x2[-1], lag.max = 20, plot = FALSE)
+plot(x2_acf_values, main = "ACF of x(2,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x2_pacf_values <- pacf(df$x2[-1], lag.max = 20, plot = FALSE)
+plot(x2_pacf_values, main = "PACF of x(2,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+The sample graph looks very similar to the $x_{1,t}$ with no trend/mean, no visible change in variance, and no chance in the correlation of the observations which suggests again weak-stationarity. However this sample differs is that it seems to look more smooth. Looking to the ACF and PACF charts we can see that there is a spike in the lag 1 autocorrolation which cuts to 0 near 0 and the PACF tails to 0 taking until lag 6 to become insignificant. This follows the pattern of a MA(1) process which is consistent with the DGP for $x_{2,t}$. Furthermore PACF seems to flip-flop between positive and negative - this means that \theta is negative - this is consistent with the formula for the DGP ($\theta = --0.8 = 0.8$)
+
+### iii
+
+```{r}
+ggplot(data=df, aes(t, x3)) +
+  geom_path() +
+  labs(title="Sample realisation of x(3,t)")
+
+x3_acf_values <- acf(df$x3[-1], lag.max = 20, plot = FALSE)
+plot(x3_acf_values, main = "ACF of x(3,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x3_pacf_values <- pacf(df$x3[-1], lag.max = 20, plot = FALSE)
+plot(x3_pacf_values, main = "PACF of x(3,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+Looking to the sample of plot of $x_{3,t}$ we see a similar pattern to 
+
+### iv
+
+```{r}
+ggplot(data=df, aes(t, x4)) +
+  geom_path() +
+  labs(title="Sample realisation of x(4,t)")
+
+x4_acf_values <- acf(df$x4[-1], lag.max = 20, plot = FALSE)
+plot(x4_acf_values, main = "ACF of x(4,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x4_pacf_values <- pacf(df$x4[-1], lag.max = 20, plot = FALSE)
+plot(x4_pacf_values, main = "PACF of x(4,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+### v
+
+```{r}
+ggplot(data=df, aes(t, x5)) +
+  geom_path() +
+  labs(title="Sample realisation of x(5,t)")
+
+x5_acf_values <- acf(df$x5[-1], lag.max = 20, plot = FALSE)
+plot(x5_acf_values, main = "ACF of x(5,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x5_pacf_values <- pacf(df$x5[-1], lag.max = 20, plot = FALSE)
+plot(x5_pacf_values, main = "PACF of x(5,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+### vi
+
+```{r}
+ggplot(data=df, aes(t, x6)) +
+  geom_path() +
+  labs(title="Sample realisation of x(6,t)")
+
+x6_acf_values <- acf(df$x6[-1], lag.max = 20, plot = FALSE)
+plot(x6_acf_values, main = "ACF of x(6,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x6_pacf_values <- pacf(df$x6[-1], lag.max = 20, plot = FALSE)
+plot(x6_pacf_values, main = "PACF of x(6,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+
+### vii
+
+```{r}
+ggplot(data=df, aes(t, x7)) +
+  geom_path() +
+  labs(title="Sample realisation of x(7,t)")
+
+x7_acf_values <- acf(df$x7[-1], lag.max = 20, plot = FALSE)
+plot(x7_acf_values, main = "ACF of x(7,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x7_pacf_values <- pacf(df$x7[-1], lag.max = 20, plot = FALSE)
+plot(x7_pacf_values, main = "PACF of x(7,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+
+### viii
+
+```{r}
+ggplot(data=df, aes(t, x8)) +
+  geom_path() +
+  labs(title="Sample realisation of x(8,t)")
+
+x8_acf_values <- acf(df$x8[-1], lag.max = 20, plot = FALSE)
+plot(x8_acf_values, main = "ACF of x(8,t)", xlab = "Lag", ylab = "Autocorrelation")
+
+x8_pacf_values <- pacf(df$x8[-1], lag.max = 20, plot = FALSE)
+plot(x8_pacf_values, main = "PACF of x(8,t)", xlab = "Lag", ylab = "Partial Autocorrelation")
+```
+
+
